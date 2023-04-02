@@ -1,51 +1,91 @@
 import java.io.*;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.ArrayList;
-import java.util.List;
+import java.util.Objects;
 import java.util.zip.*;
 
 public class Main {
-    public static void main(String[] args) {
+
+    public static final String savePath = "D:\\Games\\savegames\\";
+
+    public static void main(String[] args) throws IOException {
 
         GameProgress game1 = new GameProgress(5, 5, 6, 33.3);
-        saveGame("D://games//savegames//save1.dat", game1);
+        saveGame(game1, "game1");
         GameProgress game2 = new GameProgress(8, 9, 15, 111.11);
-        saveGame("D://games//savegames//save2.dat", game2);
+        saveGame(game2, "game2");
         GameProgress game3 = new GameProgress(3, 2, 1, 1.1);
-        saveGame("D:/games/savegames/save3.dat", game3);
+        saveGame(game3, "game3");
 
-        ArrayList<String> arrayList = new ArrayList<>();
-        arrayList.add("D://games//savegames//save1.dat");
-        arrayList.add("D://games//savegames//save2.dat");
-        arrayList.add("D://games//savegames//save3.dat");
-        zipFiles("D://Games//savegames//zip.zip", arrayList);
+        ArrayList<String> arrayList = arhiv();
+
+        if (arrayList != null) {
+            if (zipFiles("zip.zip", arrayList)) {
+                System.out.println("Файлы успешно добавлены в архив");
+                deleteFile(arrayList);
+            } else {
+                System.out.println("Не удалось добавить файлы в архив");
+            }
+        }
+
     }
 
-    private static void saveGame(String path, GameProgress game) {
-        try (FileOutputStream fos = new FileOutputStream(path);
+    public static ArrayList<String> arhiv() {
+        ArrayList<String> arrayList = new ArrayList<>();
+        File dir = new File(savePath);
+        if (dir.isDirectory()) {
+            for (File item : Objects.requireNonNull(dir.listFiles())) {
+                if (item.isFile()) {
+                    if (item.getName().contains(".smg")) {
+                        arrayList.add(item.getName());
+                    }
+                }
+            }
+        }
+        return arrayList;
+    }
+
+    private static boolean saveGame(GameProgress game, String arr) {
+        try (FileOutputStream fos = new FileOutputStream(savePath + arr + ".smg");
              ObjectOutputStream oos = new ObjectOutputStream(fos)) {
             oos.writeObject(game);
         } catch (Exception ex) {
             System.out.println(ex.getMessage() + '\n');
         }
+        return false;
     }
 
-    private static void zipFiles(String path, List<String> arrayList) {
-        try (ZipOutputStream zout = new ZipOutputStream(new FileOutputStream(path))) {
+    private static boolean zipFiles(String path, ArrayList<String> arrayList) {
+        try (ZipOutputStream zout = new ZipOutputStream(new FileOutputStream(savePath + path))) {
             for (String arr : arrayList) {
-                try (FileInputStream fis = new FileInputStream(arr)) {
-                    ZipEntry entry = new ZipEntry(arr);
-                    zout.putNextEntry(entry);
-                    while (fis.available() > 0) {
-                        zout.write(fis.read());
-                    }
-                    zout.closeEntry();
-
-                } catch (Exception ex) {
-                    System.out.println(ex.getMessage());
-                }
+                FileInputStream fis = new FileInputStream(savePath + arr);
+                ZipEntry entry = new ZipEntry(arr);
+                zout.putNextEntry(entry);
+                byte[] buffer = new byte[fis.available()];
+                fis.read(buffer);
+                zout.write(buffer);
+                zout.closeEntry();
+                fis.close();
             }
+            return true;
         } catch (Exception ex) {
             System.out.println(ex.getMessage());
+            return false;
         }
     }
+
+    public static boolean deleteFile(ArrayList<String> filesToDelete) throws IOException {
+        try {
+            for (String fileToDelete : filesToDelete) {
+                Path del = Path.of(savePath + fileToDelete);
+                Files.delete(del);
+            }
+            return true;
+        } catch (IOException e) {
+            System.out.println(e);
+            return false;
+        }
+    }
+
 }
